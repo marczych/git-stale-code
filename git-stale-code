@@ -35,19 +35,24 @@ def main(age_days: int) -> None:
     )
 
     for path in get_files():
-        file_info = get_file_info(path, age_days)
-        if file_info:
-            print(
-                "\t".join(
-                    [
-                        file_info.path,
-                        str(file_info.last_modification_age_days),
-                        file_info.last_modification_author,
-                        file_info.primary_author,
-                        str(round(file_info.primary_author_ratio, 2)),
-                    ]
+        try:
+            file_info = get_file_info(path, age_days)
+            if file_info:
+                print(
+                    "\t".join(
+                        [
+                            file_info.path,
+                            str(file_info.last_modification_age_days),
+                            file_info.last_modification_author,
+                            file_info.primary_author,
+                            str(round(file_info.primary_author_ratio, 2)),
+                        ]
+                    )
                 )
-            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            logging.exception(f"Failed to get file info for {path}")
 
 
 def get_files() -> List[str]:
