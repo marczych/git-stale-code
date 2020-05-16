@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+from collections import defaultdict
+from typing import Dict, List, NamedTuple, Optional
+import argparse
+import logging
+import subprocess
+import time
+
+
+class FileInfo(NamedTuple):
+    path: str
+    primary_author: str
+    primary_author_ratio: float
+    last_modification_author: str
+    last_modification_age_days: int
+
+
+class AuthorStats(NamedTuple):
+    author: str
+    ratio: float
+
+
+def main(age_days: int) -> None:
+    print(
+        "\t".join(
+            [
+                "File",
+                "Last modified (days)",
+                "Last author",
+                "Primary author",
+                "Primary author ratio",
+            ]
+        )
+    )
+
+    for path in get_files():
+        file_info = get_file_info(path, age_days)
+        if file_info:
+            print(
+                "\t".join(
+                    [
+                        file_info.path,
+                        str(file_info.last_modification_age_days),
+                        file_info.last_modification_author,
+                        file_info.primary_author,
+                        str(round(file_info.primary_author_ratio, 2)),
+                    ]
+                )
+            )
+
+
+def get_files() -> List[str]:
+    return subprocess.check_output(["git", "ls-files"]).decode("utf-8").splitlines()
+
+
+def get_file_info(path: str, age_days: int) -> Optional[FileInfo]:
+    last_modification_age_days = get_last_modification_age_days(path)
+
+    if last_modification_age_days < age_days:
+        logging.debug(
+            f"Skipping {path} (modified {last_modification_age_days} days ago)"
+        )
+        return None
+
+    primary_author = get_author_stats(path)
+
+    return FileInfo(
+        path=path,
+        primary_author=primary_author.author,
+        primary_author_ratio=primary_author.ratio,
+        last_modification_author=get_last_modification_author(path),
+        last_modification_age_days=last_modification_age_days,
+    )
+
+
+def get_last_modification_age_days(path: str) -> int:
+    last_modification_time = int(
+        subprocess.check_output(
+            ["git", "log", "-1", "--format=%at", "--", path],
+        ).decode("utf-8")
+    )
+    return int((time.time() - last_modification_time) // (24 * 60 * 60))
+
+
+def get_last_modification_author(path: str) -> str:
+    return (
+        subprocess.check_output(["git", "log", "-1", "--format=%an", "--", path])
+        .decode("utf-8")
+        .strip()
+    )
+
+
+def get_author_stats(path: str) -> AuthorStats:
+    author_prefix = "author "
+    blame = subprocess.check_output(
+        ["git", "blame", "--line-porcelain", "--", path]
+    ).decode("utf-8")
+    authors: Dict[str, int] = defaultdict(int)
+
+    for line in blame.splitlines():
+        if line.startswith(author_prefix):
+            authors[line[len(author_prefix) :]] += 1
+
+    primary_author = "<unknown>"
+    primary_author_lines = 0
+    total_lines = 0
+
+    for (author, lines) in authors.items():
+        total_lines += lines
+        if lines > primary_author_lines:
+            primary_author = author
+            primary_author_lines = lines
+
+    return AuthorStats(author=primary_author, ratio=primary_author_lines / total_lines)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--age-days", type=int, default=180)
+    parser.add_argument("--debug", action="store_true", default=False)
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+
+    main(args.age_days)
