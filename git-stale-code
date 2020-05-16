@@ -97,15 +97,15 @@ def get_last_modification_author(path: str) -> str:
 
 
 def get_author_stats(path: str) -> AuthorStats:
-    author_prefix = "author "
+    author_prefix = b"author "
     blame = subprocess.check_output(
         ["git", "blame", "--line-porcelain", "--", path]
-    ).decode("utf-8")
+    )
     authors: Dict[str, int] = defaultdict(int)
 
-    for line in blame.splitlines():
+    for line in blame.split(b"\n"):
         if line.startswith(author_prefix):
-            authors[line[len(author_prefix) :]] += 1
+            authors[line[len(author_prefix) :].decode("utf-8")] += 1
 
     primary_author = "<unknown>"
     primary_author_lines = 0
