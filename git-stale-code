@@ -21,7 +21,7 @@ class AuthorStats(NamedTuple):
     ratio: float
 
 
-def main(age_days: int) -> None:
+def main(age_days: int, path_filters: List[str]) -> None:
     print(
         "\t".join(
             [
@@ -34,7 +34,7 @@ def main(age_days: int) -> None:
         )
     )
 
-    for path in get_files():
+    for path in get_files(path_filters):
         try:
             file_info = get_file_info(path, age_days)
             if file_info:
@@ -55,8 +55,14 @@ def main(age_days: int) -> None:
             logging.exception(f"Failed to get file info for {path}")
 
 
-def get_files() -> List[str]:
-    return subprocess.check_output(["git", "ls-files"]).decode("utf-8").splitlines()
+def get_files(path_filters: List[str]) -> List[str]:
+    return (
+        subprocess.check_output(
+            ["git", "ls-files", *(["--", *path_filters] if path_filters else [])]
+        )
+        .decode("utf-8")
+        .splitlines()
+    )
 
 
 def get_file_info(path: str, age_days: int) -> Optional[FileInfo]:
@@ -98,9 +104,7 @@ def get_last_modification_author(path: str) -> str:
 
 def get_author_stats(path: str) -> AuthorStats:
     author_prefix = b"author "
-    blame = subprocess.check_output(
-        ["git", "blame", "--line-porcelain", "--", path]
-    )
+    blame = subprocess.check_output(["git", "blame", "--line-porcelain", "--", path])
     authors: Dict[str, int] = defaultdict(int)
 
     for line in blame.split(b"\n"):
@@ -126,9 +130,10 @@ def get_author_stats(path: str) -> AuthorStats:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--age-days", type=int, default=180)
+    parser.add_argument("--path-filters", nargs="+")
     parser.add_argument("--debug", action="store_true", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 
-    main(args.age_days)
+    main(args.age_days, args.path_filters)
