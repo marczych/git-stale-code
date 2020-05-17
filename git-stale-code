@@ -129,9 +129,23 @@ def get_author_stats(path: str) -> AuthorStats:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--age-days", type=int, default=180)
-    parser.add_argument("--path-filters", nargs="+")
-    parser.add_argument("--debug", action="store_true", default=False)
+    parser.add_argument(
+        "--age-days",
+        type=int,
+        default=180,
+        help="Print files that haven't been modified for this number of days.",
+    )
+    parser.add_argument(
+        "--path-filters",
+        nargs="+",
+        help="Optional list of path filters e.g. 'src' 'test'",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Print out debug information.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
