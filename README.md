@@ -15,7 +15,7 @@ optional arguments:
                         of days.
   --path-filters PATH_FILTERS [PATH_FILTERS ...]
                         Optional list of path filters e.g. 'src' 'test'
-  --debug               Print out debug information.<Paste>
+  --debug               Print out debug information.
 ```
 
 ## Installation
